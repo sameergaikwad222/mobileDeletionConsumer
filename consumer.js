@@ -1,12 +1,13 @@
 const config = require("./config.json")[process.env.NODE_ENV || "dev"];
 const { dbConnect } = require("./database/dbConnect");
 var amqp = require("amqplib");
+const { logger } = require("./logger");
 
 async function consumeMobileDeletionEvent() {
   try {
     const queue = config.mobileDeletionQueue;
     const connection = await amqp.connect(config.rabbit.url);
-    console.log("RabbitMq Connected Successfully!");
+    logger.info("RabbitMq Connected Successfully!");
     const channel = await connection.createChannel();
     channel.assertQueue(queue, { durable: true });
     channel.prefetch(1);
@@ -31,21 +32,15 @@ async function consumeMobileDeletionEvent() {
           );
 
           if (metadata.rowCount > 0) {
-            console.log(
-              "Successfully deleted user ... ",
-              msg.content.toString()
-            );
+            logger.info(`Successfully deleted user ... ${mobile}`);
             channel.ack(msg);
           } else {
-            console.log(
-              "User deletion issue found for ",
-              msg.content.toString()
-            );
+            logger.info(`User deletion issue found for ${mobile}`);
             channel.nack(msg);
           }
           //Write producer code here.....
         } else {
-          console.log("No user found for ", msg.content.toString());
+          logger.info(`No user found for ${mobile}`);
           channel.ack(msg);
         }
       },
@@ -54,7 +49,7 @@ async function consumeMobileDeletionEvent() {
       }
     );
   } catch (error) {
-    console.log(`Error Here: ${error}`);
+    logger.error(`Error Here: ${error}`);
     process.exit(1);
   }
 }
